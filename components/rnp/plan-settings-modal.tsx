@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { MonthlyPlans, getDaysInMonth } from "@/lib/rnp-types"
+import { MonthlyPlans, getDaysInMonth, MONTHS_UZ } from "@/lib/rnp-types"
 
 interface PlanSettingsModalProps {
   open: boolean
@@ -72,9 +72,11 @@ export function PlanSettingsModal({
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Kunlik Reja Sozlamalari</DialogTitle>
+          <DialogTitle className="text-xl text-gray-900">
+            Kunlik Reja Sozlamalari - {MONTHS_UZ[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 py-4">
@@ -85,13 +87,13 @@ export function PlanSettingsModal({
           >
             <div className="flex items-center space-x-3">
               <RadioGroupItem value="uniform" id="uniform" />
-              <Label htmlFor="uniform" className="text-foreground cursor-pointer">
+              <Label htmlFor="uniform" className="text-gray-700 cursor-pointer">
                 Barcha kunlarga bir xil reja qo&apos;yish
               </Label>
             </div>
             <div className="flex items-center space-x-3">
               <RadioGroupItem value="individual" id="individual" />
-              <Label htmlFor="individual" className="text-foreground cursor-pointer">
+              <Label htmlFor="individual" className="text-gray-700 cursor-pointer">
                 Har kunga alohida
               </Label>
             </div>
@@ -99,27 +101,27 @@ export function PlanSettingsModal({
           
           {mode === "uniform" ? (
             <div className="space-y-2">
-              <Label className="text-muted-foreground">Kunlik reja (barcha kunlar uchun)</Label>
+              <Label className="text-gray-600">Kunlik reja (barcha kunlar uchun)</Label>
               <Input
                 type="number"
                 value={uniformValue}
                 onChange={(e) => setUniformValue(e.target.value)}
-                className="bg-input border-border text-foreground w-40"
+                className="bg-white border-gray-200 text-gray-900 w-40"
                 placeholder="Masalan: 10"
               />
             </div>
           ) : (
             <div className="space-y-3">
-              <Label className="text-muted-foreground">Har bir kun uchun reja kiriting:</Label>
+              <Label className="text-gray-600">Har bir kun uchun reja kiriting:</Label>
               <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
                   <div key={day} className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">{day}-kun</Label>
+                    <Label className="text-xs text-gray-500">{day}-kun</Label>
                     <Input
                       type="number"
                       value={individualPlans[day] || ""}
                       onChange={(e) => handleIndividualChange(day, e.target.value)}
-                      className="bg-input border-border text-foreground h-9 text-sm"
+                      className="bg-white border-gray-200 text-gray-900 h-9 text-sm"
                       placeholder="0"
                     />
                   </div>
@@ -130,10 +132,10 @@ export function PlanSettingsModal({
         </div>
         
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} className="border-border">
+          <Button variant="outline" onClick={onClose} className="border-gray-200 text-gray-700">
             Bekor qilish
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
             Saqlash
           </Button>
         </DialogFooter>

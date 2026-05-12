@@ -2,30 +2,31 @@
 
 import { Lock, Download, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { MonthSelector } from "./month-selector"
+import { DateRangePicker } from "./date-range-picker"
+import { DateRange } from "@/lib/rnp-types"
 
 interface DashboardHeaderProps {
-  currentDate: Date
-  onDateChange: (date: Date) => void
+  dateRange: DateRange
+  onDateRangeChange: (range: DateRange) => void
   onLogout: () => void
   onExport: () => void
   onOpenPlanSettings: () => void
 }
 
 export function DashboardHeader({ 
-  currentDate, 
-  onDateChange, 
+  dateRange,
+  onDateRangeChange,
   onLogout, 
   onExport,
   onOpenPlanSettings
 }: DashboardHeaderProps) {
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="container mx-auto px-4 py-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-foreground">RNP Dashboard</h1>
-            <MonthSelector currentDate={currentDate} onDateChange={onDateChange} />
+            <h1 className="text-xl font-bold text-gray-900">RNP Dashboard</h1>
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
           </div>
           
           <div className="flex items-center gap-2">
@@ -33,7 +34,7 @@ export function DashboardHeader({
               variant="outline" 
               size="sm" 
               onClick={onOpenPlanSettings}
-              className="border-border"
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
             >
               <Settings className="h-4 w-4 mr-2" />
               Reja sozlamalari
@@ -42,7 +43,7 @@ export function DashboardHeader({
               variant="outline" 
               size="sm" 
               onClick={onExport}
-              className="border-border"
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
             >
               <Download className="h-4 w-4 mr-2" />
               Eksport
@@ -51,7 +52,7 @@ export function DashboardHeader({
               variant="ghost" 
               size="icon"
               onClick={onLogout}
-              className="text-muted-foreground hover:text-destructive"
+              className="text-gray-500 hover:text-red-600"
               title="Chiqish"
             >
               <Lock className="h-4 w-4" />
