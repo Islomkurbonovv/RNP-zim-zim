@@ -55,23 +55,8 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
     const last7Days = new Date(today)
     last7Days.setDate(last7Days.getDate() - 6)
     
-    const last14Days = new Date(today)
-    last14Days.setDate(last14Days.getDate() - 13)
-    
     const last30Days = new Date(today)
     last30Days.setDate(last30Days.getDate() - 29)
-    
-    // This week (Monday to today)
-    const thisWeekStart = new Date(today)
-    const dayOfWeek = thisWeekStart.getDay()
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    thisWeekStart.setDate(thisWeekStart.getDate() - diff)
-    
-    // Last week (last Monday to last Sunday)
-    const lastWeekStart = new Date(thisWeekStart)
-    lastWeekStart.setDate(lastWeekStart.getDate() - 7)
-    const lastWeekEnd = new Date(thisWeekStart)
-    lastWeekEnd.setDate(lastWeekEnd.getDate() - 1)
     
     // This month (1st to last day)
     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -81,21 +66,13 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
     const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
     
-    // Maximum (1 year ago to today)
-    const maxStart = new Date(today)
-    maxStart.setFullYear(maxStart.getFullYear() - 1)
-    
     return [
       { label: "Bugun", getValue: () => ({ from: new Date(today), to: new Date(today) }) },
       { label: "Kecha", getValue: () => ({ from: new Date(yesterday), to: new Date(yesterday) }) },
       { label: "Oxirgi 7 kun", getValue: () => ({ from: new Date(last7Days), to: new Date(today) }) },
-      { label: "Oxirgi 14 kun", getValue: () => ({ from: new Date(last14Days), to: new Date(today) }) },
       { label: "Oxirgi 30 kun", getValue: () => ({ from: new Date(last30Days), to: new Date(today) }) },
-      { label: "Bu hafta", getValue: () => ({ from: new Date(thisWeekStart), to: new Date(today) }) },
-      { label: "O'tgan hafta", getValue: () => ({ from: new Date(lastWeekStart), to: new Date(lastWeekEnd) }) },
       { label: "Bu oy", getValue: () => ({ from: new Date(thisMonthStart), to: new Date(thisMonthEnd) }) },
       { label: "O'tgan oy", getValue: () => ({ from: new Date(lastMonthStart), to: new Date(lastMonthEnd) }) },
-      { label: "Maksimal", getValue: () => ({ from: new Date(maxStart), to: new Date(today) }) },
     ]
   }, [])
 
@@ -246,7 +223,7 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
       <PopoverContent className="w-auto p-0 bg-white border-gray-200 shadow-xl" align="start">
         <div className="flex">
           {/* Presets Sidebar */}
-          <div className="w-44 border-r border-gray-200 py-2">
+          <div className="w-40 border-r border-gray-200 py-2">
             {presets.map((preset, index) => (
               <button
                 key={index}

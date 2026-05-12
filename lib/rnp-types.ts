@@ -1,5 +1,8 @@
 export interface DailyEntry {
-  day: number
+  date: Date  // Full date for the entry
+  day: number // Day of month (1-31)
+  month: number // Month (0-11)
+  year: number // Year
   byudjet: number
   sifatliLead: number
   jamiLead: number
@@ -9,6 +12,13 @@ export interface DailyEntry {
   sifatPercent: number
   konversiyaPercent: number
   rejaPercent: number
+}
+
+// Format date as DD.MM.YYYY
+export const formatDateShort = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  return `${day}.${month}.${date.getFullYear()}`
 }
 
 export interface MonthlyPlans {

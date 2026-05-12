@@ -13,7 +13,6 @@ import {
   KPIData, 
   DateRange,
   getStorageKey, 
-  getDaysInMonth,
   MONTHS_UZ,
   formatCurrency
 } from "@/lib/rnp-types"
@@ -88,54 +87,62 @@ export function Dashboard({ onLogout }: DashboardProps) {
     setAllMonthsPlans(newPlans)
   }, [monthsInRange])
 
-  // Generate entries for the selected date range
+  // Generate entries ONLY for days within the selected date range
   const entries = useMemo(() => {
     const result: DailyEntry[] = []
     
-    monthsInRange.forEach(month => {
-      const dataKey = getStorageKey("data", month)
-      const plansKey = getStorageKey("plans", month)
+    // Iterate through each day in the range
+    const currentDate = new Date(dateRange.from)
+    currentDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(dateRange.to)
+    endDate.setHours(23, 59, 59, 999)
+    
+    while (currentDate <= endDate) {
+      const day = currentDate.getDate()
+      const month = currentDate.getMonth()
+      const year = currentDate.getFullYear()
+      
+      // Get the correct storage keys for this specific date
+      const dataKey = getStorageKey("data", currentDate)
+      const plansKey = getStorageKey("plans", currentDate)
       const monthData = allMonthsData.get(dataKey) || {}
       const monthPlans = allMonthsPlans.get(plansKey) || {}
       
-      const daysInMonth = getDaysInMonth(month)
-      const isFirstMonth = month.getMonth() === dateRange.from.getMonth() && month.getFullYear() === dateRange.from.getFullYear()
-      const isLastMonth = month.getMonth() === dateRange.to.getMonth() && month.getFullYear() === dateRange.to.getFullYear()
+      const savedData = monthData[day] || {}
+      const rejaLid = monthPlans[day] || 0
       
-      const startDay = isFirstMonth ? dateRange.from.getDate() : 1
-      const endDay = isLastMonth ? dateRange.to.getDate() : daysInMonth
+      const byudjet = savedData.byudjet || 0
+      const sifatliLead = savedData.sifatliLead || 0
+      const jamiLead = savedData.jamiLead || 0
+      const sotuv = savedData.sotuv || 0
+      const sifatsiz = jamiLead - sifatliLead
       
-      for (let day = startDay; day <= endDay; day++) {
-        const savedData = monthData[day] || {}
-        const rejaLid = monthPlans[day] || 0
-        
-        const byudjet = savedData.byudjet || 0
-        const sifatliLead = savedData.sifatliLead || 0
-        const jamiLead = savedData.jamiLead || 0
-        const sotuv = savedData.sotuv || 0
-        const sifatsiz = jamiLead - sifatliLead
-        
-        const sifatPercent = jamiLead > 0 ? (sifatliLead / jamiLead) * 100 : 0
-        const konversiyaPercent = sifatliLead > 0 ? (sotuv / sifatliLead) * 100 : 0
-        const rejaPercent = rejaLid > 0 ? (sifatliLead / rejaLid) * 100 : 0
-        
-        result.push({
-          day,
-          byudjet,
-          sifatliLead,
-          jamiLead,
-          sotuv,
-          sifatsiz,
-          rejaLid,
-          sifatPercent,
-          konversiyaPercent,
-          rejaPercent
-        })
-      }
-    })
+      const sifatPercent = jamiLead > 0 ? (sifatliLead / jamiLead) * 100 : 0
+      const konversiyaPercent = sifatliLead > 0 ? (sotuv / sifatliLead) * 100 : 0
+      const rejaPercent = rejaLid > 0 ? (sifatliLead / rejaLid) * 100 : 0
+      
+      result.push({
+        date: new Date(currentDate),
+        day,
+        month,
+        year,
+        byudjet,
+        sifatliLead,
+        jamiLead,
+        sotuv,
+        sifatsiz,
+        rejaLid,
+        sifatPercent,
+        konversiyaPercent,
+        rejaPercent
+      })
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
     
     return result
-  }, [monthsInRange, allMonthsData, allMonthsPlans, dateRange])
+  }, [dateRange, allMonthsData, allMonthsPlans])
 
   // Get the current month for editing (uses the "from" date)
   const currentEditMonth = dateRange.from
