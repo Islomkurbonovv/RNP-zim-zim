@@ -23,9 +23,27 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onLogout }: DashboardProps) {
-  // Initialize with current month range
+  // Initialize with current month range, or load from localStorage
   const getInitialDateRange = (): DateRange => {
+    // Try to load from localStorage first
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("rnp-date-range")
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          return {
+            from: new Date(parsed.from),
+            to: new Date(parsed.to)
+          }
+        } catch {
+          // Fall through to default
+        }
+      }
+    }
+    
+    // Default: full current month
     const now = new Date()
+    now.setHours(0, 0, 0, 0)
     const from = new Date(now.getFullYear(), now.getMonth(), 1)
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     return { from, to }

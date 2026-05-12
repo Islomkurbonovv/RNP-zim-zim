@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -20,15 +20,34 @@ interface PresetOption {
   getValue: () => DateRange
 }
 
+// Helper to normalize dates (remove time component)
+function normalizeDate(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Helper to compare dates (day level)
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth() === b.getMonth() &&
+         a.getDate() === b.getDate()
+}
+
 export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
   const [tempRange, setTempRange] = useState<DateRange>(dateRange)
   const [viewMonth, setViewMonth] = useState(new Date())
-  const [selectingStart, setSelectingStart] = useState(true)
+  const [selectionPhase, setSelectionPhase] = useState<"start" | "end">("start")
+  const [hoverDate, setHoverDate] = useState<Date | null>(null)
+
+  // Sync tempRange when dateRange prop changes
+  useEffect(() => {
+    setTempRange(dateRange)
+  }, [dateRange])
 
   const presets: PresetOption[] = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = normalizeDate(new Date())
     
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
@@ -42,41 +61,43 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
     const last30Days = new Date(today)
     last30Days.setDate(last30Days.getDate() - 29)
     
+    // This week (Monday to today)
     const thisWeekStart = new Date(today)
     const dayOfWeek = thisWeekStart.getDay()
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
     thisWeekStart.setDate(thisWeekStart.getDate() - diff)
     
+    // Last week (last Monday to last Sunday)
     const lastWeekStart = new Date(thisWeekStart)
     lastWeekStart.setDate(lastWeekStart.getDate() - 7)
     const lastWeekEnd = new Date(thisWeekStart)
     lastWeekEnd.setDate(lastWeekEnd.getDate() - 1)
     
+    // This month (1st to last day)
     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
     
+    // Last month
     const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
     
-    const maxStart = new Date(2020, 0, 1)
+    // Maximum (1 year ago to today)
+    const maxStart = new Date(today)
+    maxStart.setFullYear(maxStart.getFullYear() - 1)
     
     return [
-      { label: "Bugun", getValue: () => ({ from: today, to: today }) },
-      { label: "Kecha", getValue: () => ({ from: yesterday, to: yesterday }) },
-      { label: "Oxirgi 7 kun", getValue: () => ({ from: last7Days, to: today }) },
-      { label: "Oxirgi 14 kun", getValue: () => ({ from: last14Days, to: today }) },
-      { label: "Oxirgi 30 kun", getValue: () => ({ from: last30Days, to: today }) },
-      { label: "Bu hafta", getValue: () => ({ from: thisWeekStart, to: today }) },
-      { label: "O'tgan hafta", getValue: () => ({ from: lastWeekStart, to: lastWeekEnd }) },
-      { label: "Bu oy", getValue: () => ({ from: thisMonthStart, to: thisMonthEnd }) },
-      { label: "O'tgan oy", getValue: () => ({ from: lastMonthStart, to: lastMonthEnd }) },
-      { label: "Maksimal", getValue: () => ({ from: maxStart, to: today }) },
+      { label: "Bugun", getValue: () => ({ from: new Date(today), to: new Date(today) }) },
+      { label: "Kecha", getValue: () => ({ from: new Date(yesterday), to: new Date(yesterday) }) },
+      { label: "Oxirgi 7 kun", getValue: () => ({ from: new Date(last7Days), to: new Date(today) }) },
+      { label: "Oxirgi 14 kun", getValue: () => ({ from: new Date(last14Days), to: new Date(today) }) },
+      { label: "Oxirgi 30 kun", getValue: () => ({ from: new Date(last30Days), to: new Date(today) }) },
+      { label: "Bu hafta", getValue: () => ({ from: new Date(thisWeekStart), to: new Date(today) }) },
+      { label: "O'tgan hafta", getValue: () => ({ from: new Date(lastWeekStart), to: new Date(lastWeekEnd) }) },
+      { label: "Bu oy", getValue: () => ({ from: new Date(thisMonthStart), to: new Date(thisMonthEnd) }) },
+      { label: "O'tgan oy", getValue: () => ({ from: new Date(lastMonthStart), to: new Date(lastMonthEnd) }) },
+      { label: "Maksimal", getValue: () => ({ from: new Date(maxStart), to: new Date(today) }) },
     ]
   }, [])
-
-  const formatDateDisplay = (date: Date) => {
-    return `${date.getDate()} ${MONTHS_UZ[date.getMonth()]}, ${date.getFullYear()}`
-  }
 
   const formatDateInput = (date: Date) => {
     const day = String(date.getDate()).padStart(2, "0")
@@ -84,43 +105,101 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
     return `${day}.${month}.${date.getFullYear()}`
   }
 
+  // Smart display text formatting
   const displayText = useMemo(() => {
     const from = dateRange.from
     const to = dateRange.to
     
+    // Single day
+    if (isSameDay(from, to)) {
+      return `${from.getDate()} ${MONTHS_UZ[from.getMonth()]}, ${from.getFullYear()}`
+    }
+    
+    // Check if it's a full month
+    const firstOfMonth = new Date(from.getFullYear(), from.getMonth(), 1)
+    const lastOfMonth = new Date(from.getFullYear(), from.getMonth() + 1, 0)
+    if (isSameDay(from, firstOfMonth) && isSameDay(to, lastOfMonth)) {
+      return `${MONTHS_UZ[from.getMonth()]} ${from.getFullYear()}`
+    }
+    
+    // Same month range
     if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()) {
       return `${from.getDate()} - ${to.getDate()} ${MONTHS_UZ[from.getMonth()]}, ${from.getFullYear()}`
     }
-    return `${formatDateDisplay(from)} - ${formatDateDisplay(to)}`
+    
+    // Cross-month range (same year)
+    if (from.getFullYear() === to.getFullYear()) {
+      return `${from.getDate()} ${MONTHS_UZ[from.getMonth()]} - ${to.getDate()} ${MONTHS_UZ[to.getMonth()]}, ${from.getFullYear()}`
+    }
+    
+    // Cross-year range
+    return `${from.getDate()} ${MONTHS_UZ[from.getMonth()]}, ${from.getFullYear()} - ${to.getDate()} ${MONTHS_UZ[to.getMonth()]}, ${to.getFullYear()}`
   }, [dateRange])
+
+  // Check which preset is currently active
+  const activePreset = useMemo(() => {
+    for (const preset of presets) {
+      const range = preset.getValue()
+      if (isSameDay(tempRange.from, range.from) && isSameDay(tempRange.to, range.to)) {
+        return preset.label
+      }
+    }
+    return null
+  }, [tempRange, presets])
 
   const handlePresetClick = (preset: PresetOption) => {
     const range = preset.getValue()
     setTempRange(range)
     setViewMonth(range.from)
+    setSelectionPhase("start")
+    setHoverDate(null)
   }
 
   const handleDayClick = (date: Date) => {
-    if (selectingStart) {
-      setTempRange({ from: date, to: date })
-      setSelectingStart(false)
+    const normalized = normalizeDate(date)
+    
+    if (selectionPhase === "start") {
+      // First click - set start date, clear end, wait for second click
+      setTempRange({ from: normalized, to: normalized })
+      setSelectionPhase("end")
     } else {
-      if (date < tempRange.from) {
-        setTempRange({ from: date, to: tempRange.from })
+      // Second click - complete the range
+      if (normalized < tempRange.from) {
+        // Clicked date is before start - swap them
+        setTempRange({ from: normalized, to: tempRange.from })
       } else {
-        setTempRange({ ...tempRange, to: date })
+        // Normal case - clicked date is end
+        setTempRange({ from: tempRange.from, to: normalized })
       }
-      setSelectingStart(true)
+      setSelectionPhase("start")
+      setHoverDate(null)
     }
+  }
+
+  const handleDayHover = (date: Date) => {
+    if (selectionPhase === "end") {
+      setHoverDate(normalizeDate(date))
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setHoverDate(null)
   }
 
   const handleApply = () => {
     onDateRangeChange(tempRange)
+    // Save to localStorage
+    localStorage.setItem("rnp-date-range", JSON.stringify({
+      from: tempRange.from.toISOString(),
+      to: tempRange.to.toISOString()
+    }))
     setOpen(false)
   }
 
   const handleCancel = () => {
     setTempRange(dateRange)
+    setSelectionPhase("start")
+    setHoverDate(null)
     setOpen(false)
   }
 
@@ -128,19 +207,36 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
     if (isOpen) {
       setTempRange(dateRange)
       setViewMonth(dateRange.from)
-      setSelectingStart(true)
+      setSelectionPhase("start")
+      setHoverDate(null)
+    } else {
+      // Clicking outside = cancel
+      setTempRange(dateRange)
+      setSelectionPhase("start")
+      setHoverDate(null)
     }
     setOpen(isOpen)
   }
 
   const nextMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1)
 
+  // Calculate preview range for hover effect
+  const previewRange = useMemo(() => {
+    if (selectionPhase === "end" && hoverDate) {
+      if (hoverDate < tempRange.from) {
+        return { from: hoverDate, to: tempRange.from }
+      }
+      return { from: tempRange.from, to: hoverDate }
+    }
+    return tempRange
+  }, [selectionPhase, hoverDate, tempRange])
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
-          className="h-9 px-3 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 font-medium"
+          className="h-9 px-3 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
         >
           <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
           {displayText}
@@ -157,7 +253,9 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
                 onClick={() => handlePresetClick(preset)}
                 className={cn(
                   "w-full px-4 py-2 text-left text-sm hover:bg-blue-50 transition-colors",
-                  preset.label === "Bu oy" ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"
+                  activePreset === preset.label 
+                    ? "bg-blue-50 text-blue-600 font-medium" 
+                    : "text-gray-700"
                 )}
               >
                 {preset.label}
@@ -166,29 +264,42 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
           </div>
           
           {/* Calendars */}
-          <div className="p-4">
+          <div className="p-4" onMouseLeave={handleMouseLeave}>
+            {/* Selection hint */}
+            {selectionPhase === "end" && (
+              <div className="text-sm text-blue-600 mb-3 text-center font-medium">
+                Endi tugash kunini tanlang
+              </div>
+            )}
+            
             <div className="flex gap-4">
               <CalendarMonth 
                 month={viewMonth}
                 selectedRange={tempRange}
+                previewRange={previewRange}
                 onDayClick={handleDayClick}
+                onDayHover={handleDayHover}
                 onPrevMonth={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
                 onNextMonth={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
                 showNav="prev"
+                isSelectingEnd={selectionPhase === "end"}
               />
               <CalendarMonth 
                 month={nextMonth}
                 selectedRange={tempRange}
+                previewRange={previewRange}
                 onDayClick={handleDayClick}
+                onDayHover={handleDayHover}
                 onPrevMonth={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
                 onNextMonth={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
                 showNav="next"
+                isSelectingEnd={selectionPhase === "end"}
               />
             </div>
             
             {/* Date Inputs and Buttons */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600 font-medium">From:</span>
                   <Input 
@@ -218,7 +329,7 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
                 <Button 
                   size="sm" 
                   onClick={handleApply}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 >
                   Tasdiqlash
                 </Button>
@@ -234,15 +345,27 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
 interface CalendarMonthProps {
   month: Date
   selectedRange: DateRange
+  previewRange: DateRange
   onDayClick: (date: Date) => void
+  onDayHover: (date: Date) => void
   onPrevMonth: () => void
   onNextMonth: () => void
   showNav: "prev" | "next"
+  isSelectingEnd: boolean
 }
 
-function CalendarMonth({ month, selectedRange, onDayClick, onPrevMonth, onNextMonth, showNav }: CalendarMonthProps) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+function CalendarMonth({ 
+  month, 
+  selectedRange, 
+  previewRange,
+  onDayClick, 
+  onDayHover,
+  onPrevMonth, 
+  onNextMonth, 
+  showNav,
+  isSelectingEnd
+}: CalendarMonthProps) {
+  const today = normalizeDate(new Date())
   
   const daysInMonth = getDaysInMonth(month)
   const firstDayOfMonth = new Date(month.getFullYear(), month.getMonth(), 1)
@@ -261,25 +384,24 @@ function CalendarMonth({ month, selectedRange, onDayClick, onPrevMonth, onNextMo
     days.push(i)
   }
   
-  const isInRange = (day: number) => {
-    const date = new Date(month.getFullYear(), month.getMonth(), day)
-    return date >= selectedRange.from && date <= selectedRange.to
+  const getDateForDay = (day: number) => 
+    new Date(month.getFullYear(), month.getMonth(), day)
+  
+  const isInPreviewRange = (day: number) => {
+    const date = normalizeDate(getDateForDay(day))
+    return date >= previewRange.from && date <= previewRange.to
   }
   
   const isRangeStart = (day: number) => {
-    const date = new Date(month.getFullYear(), month.getMonth(), day)
-    return date.getTime() === selectedRange.from.getTime()
+    return isSameDay(getDateForDay(day), previewRange.from)
   }
   
   const isRangeEnd = (day: number) => {
-    const date = new Date(month.getFullYear(), month.getMonth(), day)
-    return date.getTime() === selectedRange.to.getTime()
+    return isSameDay(getDateForDay(day), previewRange.to)
   }
   
   const isToday = (day: number) => {
-    return month.getFullYear() === today.getFullYear() && 
-           month.getMonth() === today.getMonth() && 
-           day === today.getDate()
+    return isSameDay(getDateForDay(day), today)
   }
 
   return (
@@ -316,15 +438,24 @@ function CalendarMonth({ month, selectedRange, onDayClick, onPrevMonth, onNextMo
           <div key={index} className="relative">
             {day !== null ? (
               <button
-                onClick={() => onDayClick(new Date(month.getFullYear(), month.getMonth(), day))}
+                onClick={() => onDayClick(getDateForDay(day))}
+                onMouseEnter={() => onDayHover(getDateForDay(day))}
                 className={cn(
-                  "w-full aspect-square flex items-center justify-center text-sm transition-colors relative z-10 text-gray-900",
-                  isInRange(day) && !isRangeStart(day) && !isRangeEnd(day) && "bg-blue-100 text-blue-900",
-                  isRangeStart(day) && "bg-blue-600 text-white rounded-l-md",
-                  isRangeEnd(day) && "bg-blue-600 text-white rounded-r-md",
+                  "w-full aspect-square flex items-center justify-center text-sm transition-colors relative z-10",
+                  // Default state
+                  "text-gray-900 hover:bg-gray-100",
+                  // In range (not start/end)
+                  isInPreviewRange(day) && !isRangeStart(day) && !isRangeEnd(day) && 
+                    "bg-blue-100 text-blue-900 hover:bg-blue-200",
+                  // Range start
+                  isRangeStart(day) && "bg-blue-600 text-white rounded-l-md hover:bg-blue-700",
+                  // Range end
+                  isRangeEnd(day) && "bg-blue-600 text-white rounded-r-md hover:bg-blue-700",
+                  // Single day (start and end same)
                   isRangeStart(day) && isRangeEnd(day) && "rounded-md",
-                  !isInRange(day) && "hover:bg-gray-100",
-                  isToday(day) && !isRangeStart(day) && !isRangeEnd(day) && "ring-2 ring-blue-500 ring-inset rounded-md"
+                  // Today indicator (when not selected)
+                  isToday(day) && !isRangeStart(day) && !isRangeEnd(day) && !isInPreviewRange(day) && 
+                    "ring-2 ring-blue-500 ring-inset rounded-md"
                 )}
               >
                 {day}
