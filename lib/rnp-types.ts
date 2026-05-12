@@ -31,7 +31,8 @@ export interface DateRange {
   to: Date
 }
 
-export const PASSWORD = "zimzim2026"
+// CHANGE THIS PASSWORD TO YOUR OWN
+export const PASSWORD = "RnPmarketing2026"
 
 export const getStorageKey = (type: "data" | "plans" | "auth", date: Date) => {
   const year = date.getFullYear()

@@ -190,19 +190,19 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">From:</span>
+                  <span className="text-sm text-gray-600 font-medium">From:</span>
                   <Input 
                     value={formatDateInput(tempRange.from)}
                     readOnly
-                    className="w-28 h-8 text-sm bg-gray-50 border-gray-200"
+                    className="w-28 h-8 text-sm bg-white border-gray-300 text-gray-900"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">To:</span>
+                  <span className="text-sm text-gray-600 font-medium">To:</span>
                   <Input 
                     value={formatDateInput(tempRange.to)}
                     readOnly
-                    className="w-28 h-8 text-sm bg-gray-50 border-gray-200"
+                    className="w-28 h-8 text-sm bg-white border-gray-300 text-gray-900"
                   />
                 </div>
               </div>
@@ -211,7 +211,7 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
                   variant="outline" 
                   size="sm" 
                   onClick={handleCancel}
-                  className="border-gray-200"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   Bekor qilish
                 </Button>
@@ -287,15 +287,15 @@ function CalendarMonth({ month, selectedRange, onDayClick, onPrevMonth, onNextMo
       {/* Month Header */}
       <div className="flex items-center justify-between mb-3">
         {showNav === "prev" ? (
-          <Button variant="ghost" size="icon" onClick={onPrevMonth} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={onPrevMonth} className="h-8 w-8 text-gray-700 hover:bg-gray-100">
             <ChevronLeft className="h-4 w-4" />
           </Button>
         ) : <div className="w-8" />}
-        <span className="font-semibold text-gray-900">
+        <span className="font-bold text-gray-900">
           {MONTHS_UZ[month.getMonth()]} {month.getFullYear()}
         </span>
         {showNav === "next" ? (
-          <Button variant="ghost" size="icon" onClick={onNextMonth} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={onNextMonth} className="h-8 w-8 text-gray-700 hover:bg-gray-100">
             <ChevronRight className="h-4 w-4" />
           </Button>
         ) : <div className="w-8" />}
@@ -318,8 +318,8 @@ function CalendarMonth({ month, selectedRange, onDayClick, onPrevMonth, onNextMo
               <button
                 onClick={() => onDayClick(new Date(month.getFullYear(), month.getMonth(), day))}
                 className={cn(
-                  "w-full aspect-square flex items-center justify-center text-sm transition-colors relative z-10",
-                  isInRange(day) && !isRangeStart(day) && !isRangeEnd(day) && "bg-blue-100",
+                  "w-full aspect-square flex items-center justify-center text-sm transition-colors relative z-10 text-gray-900",
+                  isInRange(day) && !isRangeStart(day) && !isRangeEnd(day) && "bg-blue-100 text-blue-900",
                   isRangeStart(day) && "bg-blue-600 text-white rounded-l-md",
                   isRangeEnd(day) && "bg-blue-600 text-white rounded-r-md",
                   isRangeStart(day) && isRangeEnd(day) && "rounded-md",

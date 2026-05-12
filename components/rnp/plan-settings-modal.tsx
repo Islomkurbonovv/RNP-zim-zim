@@ -101,27 +101,27 @@ export function PlanSettingsModal({
           
           {mode === "uniform" ? (
             <div className="space-y-2">
-              <Label className="text-gray-600">Kunlik reja (barcha kunlar uchun)</Label>
+              <Label className="text-gray-700 font-medium">Kunlik reja (barcha kunlar uchun)</Label>
               <Input
                 type="number"
                 value={uniformValue}
                 onChange={(e) => setUniformValue(e.target.value)}
-                className="bg-white border-gray-200 text-gray-900 w-40"
+                className="bg-white border-gray-300 text-gray-900 w-40"
                 placeholder="Masalan: 10"
               />
             </div>
           ) : (
             <div className="space-y-3">
-              <Label className="text-gray-600">Har bir kun uchun reja kiriting:</Label>
+              <Label className="text-gray-700 font-medium">Har bir kun uchun reja kiriting:</Label>
               <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
                   <div key={day} className="space-y-1">
-                    <Label className="text-xs text-gray-500">{day}-kun</Label>
+                    <Label className="text-xs text-gray-600">{day}-kun</Label>
                     <Input
                       type="number"
                       value={individualPlans[day] || ""}
                       onChange={(e) => handleIndividualChange(day, e.target.value)}
-                      className="bg-white border-gray-200 text-gray-900 h-9 text-sm"
+                      className="bg-white border-gray-300 text-gray-900 h-9 text-sm"
                       placeholder="0"
                     />
                   </div>
@@ -132,10 +132,10 @@ export function PlanSettingsModal({
         </div>
         
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} className="border-gray-200 text-gray-700">
+          <Button variant="outline" onClick={onClose} className="border-gray-300 text-gray-700 hover:bg-gray-50">
             Bekor qilish
           </Button>
-          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
             Saqlash
           </Button>
         </DialogFooter>

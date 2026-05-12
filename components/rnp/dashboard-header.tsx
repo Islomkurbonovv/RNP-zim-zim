@@ -34,25 +34,25 @@ export function DashboardHeader({
               variant="outline" 
               size="sm" 
               onClick={onOpenPlanSettings}
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
+              className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
             >
-              <Settings className="h-4 w-4 mr-2" />
+              <Settings className="h-4 w-4 mr-2 text-gray-600" />
               Reja sozlamalari
             </Button>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={onExport}
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
+              className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 text-gray-600" />
               Eksport
             </Button>
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="icon"
               onClick={onLogout}
-              className="text-gray-500 hover:text-red-600"
+              className="border-gray-300 bg-white text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 shadow-sm"
               title="Chiqish"
             >
               <Lock className="h-4 w-4" />

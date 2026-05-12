@@ -158,7 +158,7 @@ export function DataTable({ entries, onUpdateEntry }: DataTableProps) {
               </TableRow>
             ))}
             {/* Totals Row */}
-            <TableRow className="bg-blue-50 hover:bg-blue-50 font-bold border-t-2 border-blue-200">
+            <TableRow className="bg-gray-100 hover:bg-gray-100 font-bold border-t-2 border-gray-300">
               <TableCell className="text-gray-900">JAMI</TableCell>
               <TableCell className="text-gray-900">{formatCurrency(totals.byudjet)}</TableCell>
               <TableCell className="text-gray-900">{formatNumber(totals.sifatliLead)}</TableCell>
