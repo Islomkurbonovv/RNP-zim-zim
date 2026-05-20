@@ -21,7 +21,6 @@ export default function Home() {
     setIsAuthenticated(false)
   }
   
-  // Loading state
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
