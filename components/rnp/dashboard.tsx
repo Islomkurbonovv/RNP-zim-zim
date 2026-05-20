@@ -16,31 +16,18 @@ import {
   MONTHS_UZ,
   formatCurrency
 } from "@/lib/rnp-types"
+import {
+  setDataToSupabase,
+  subscribeToChanges,
+  getAllByPrefix,
+} from "@/lib/supabase-storage"
 
 interface DashboardProps {
   onLogout: () => void
 }
 
 export function Dashboard({ onLogout }: DashboardProps) {
-  // Initialize with current month range, or load from localStorage
   const getInitialDateRange = (): DateRange => {
-    // Try to load from localStorage first
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("rnp-date-range")
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          return {
-            from: new Date(parsed.from),
-            to: new Date(parsed.to)
-          }
-        } catch {
-          // Fall through to default
-        }
-      }
-    }
-    
-    // Default: full current month
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     const from = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -52,8 +39,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const [allMonthsData, setAllMonthsData] = useState<Map<string, Record<number, Partial<DailyEntry>>>>(new Map())
   const [allMonthsPlans, setAllMonthsPlans] = useState<Map<string, MonthlyPlans>>(new Map())
   const [planModalOpen, setPlanModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   
-  // Get list of months covered by the date range
   const monthsInRange = useMemo(() => {
     const months: Date[] = []
     const current = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), 1)
@@ -67,218 +54,51 @@ export function Dashboard({ onLogout }: DashboardProps) {
     return months
   }, [dateRange])
 
-  // Load data for all months in range
   useEffect(() => {
-    const newData = new Map<string, Record<number, Partial<DailyEntry>>>()
-    const newPlans = new Map<string, MonthlyPlans>()
+    let mounted = true
     
-    monthsInRange.forEach(month => {
-      const dataKey = getStorageKey("data", month)
-      const plansKey = getStorageKey("plans", month)
+    const loadAllData = async () => {
+      setIsLoading(true)
       
-      const savedData = localStorage.getItem(dataKey)
-      const savedPlans = localStorage.getItem(plansKey)
+      const [dataResults, plansResults] = await Promise.all([
+        getAllByPrefix("rnp-data-"),
+        getAllByPrefix("rnp-plans-"),
+      ])
       
-      newData.set(dataKey, savedData ? JSON.parse(savedData) : {})
-      newPlans.set(plansKey, savedPlans ? JSON.parse(savedPlans) : {})
+      if (!mounted) return
+      
+      setAllMonthsData(dataResults)
+      setAllMonthsPlans(plansResults)
+      setIsLoading(false)
+    }
+    
+    loadAllData()
+    
+    const unsubscribe = subscribeToChanges((key, value) => {
+      if (key.startsWith("rnp-data-")) {
+        setAllMonthsData(prev => {
+          const newMap = new Map(prev)
+          newMap.set(key, value || {})
+          return newMap
+        })
+      } else if (key.startsWith("rnp-plans-")) {
+        setAllMonthsPlans(prev => {
+          const newMap = new Map(prev)
+          newMap.set(key, value || {})
+          return newMap
+        })
+      }
     })
     
-    setAllMonthsData(newData)
-    setAllMonthsPlans(newPlans)
-  }, [monthsInRange])
+    return () => {
+      mounted = false
+      unsubscribe()
+    }
+  }, [])
 
-  // Generate entries ONLY for days within the selected date range
   const entries = useMemo(() => {
     const result: DailyEntry[] = []
     
-    // Iterate through each day in the range
     const currentDate = new Date(dateRange.from)
     currentDate.setHours(0, 0, 0, 0)
-    const endDate = new Date(dateRange.to)
-    endDate.setHours(23, 59, 59, 999)
-    
-    while (currentDate <= endDate) {
-      const day = currentDate.getDate()
-      const month = currentDate.getMonth()
-      const year = currentDate.getFullYear()
-      
-      // Get the correct storage keys for this specific date
-      const dataKey = getStorageKey("data", currentDate)
-      const plansKey = getStorageKey("plans", currentDate)
-      const monthData = allMonthsData.get(dataKey) || {}
-      const monthPlans = allMonthsPlans.get(plansKey) || {}
-      
-      const savedData = monthData[day] || {}
-      const rejaLid = monthPlans[day] || 0
-      
-      const byudjet = savedData.byudjet || 0
-      const sifatliLead = savedData.sifatliLead || 0
-      const jamiLead = savedData.jamiLead || 0
-      const sotuv = savedData.sotuv || 0
-      const sifatsiz = jamiLead - sifatliLead
-      
-      const sifatPercent = jamiLead > 0 ? (sifatliLead / jamiLead) * 100 : 0
-      const konversiyaPercent = sifatliLead > 0 ? (sotuv / sifatliLead) * 100 : 0
-      const rejaPercent = rejaLid > 0 ? (sifatliLead / rejaLid) * 100 : 0
-      
-      result.push({
-        date: new Date(currentDate),
-        day,
-        month,
-        year,
-        byudjet,
-        sifatliLead,
-        jamiLead,
-        sotuv,
-        sifatsiz,
-        rejaLid,
-        sifatPercent,
-        konversiyaPercent,
-        rejaPercent
-      })
-      
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-    
-    return result
-  }, [dateRange, allMonthsData, allMonthsPlans])
-
-  // Get the current month for editing (uses the "from" date)
-  const currentEditMonth = dateRange.from
-  const currentPlans = allMonthsPlans.get(getStorageKey("plans", currentEditMonth)) || {}
-  
-  // Save data to localStorage
-  const saveData = useCallback((day: number, field: keyof DailyEntry, value: number) => {
-    const dataKey = getStorageKey("data", currentEditMonth)
-    const existingData = allMonthsData.get(dataKey) || {}
-    
-    const dayData = existingData[day] || {}
-    dayData[field as keyof typeof dayData] = value as never
-    existingData[day] = dayData
-    
-    localStorage.setItem(dataKey, JSON.stringify(existingData))
-    
-    setAllMonthsData(prev => {
-      const newMap = new Map(prev)
-      newMap.set(dataKey, { ...existingData })
-      return newMap
-    })
-  }, [currentEditMonth, allMonthsData])
-  
-  // Handle entry update
-  const handleUpdateEntry = useCallback((day: number, field: keyof DailyEntry, value: number) => {
-    saveData(day, field, value)
-  }, [saveData])
-  
-  // Handle plan save
-  const handleSavePlans = useCallback((newPlans: MonthlyPlans) => {
-    const plansKey = getStorageKey("plans", currentEditMonth)
-    localStorage.setItem(plansKey, JSON.stringify(newPlans))
-    
-    setAllMonthsPlans(prev => {
-      const newMap = new Map(prev)
-      newMap.set(plansKey, newPlans)
-      return newMap
-    })
-  }, [currentEditMonth])
-  
-  // Calculate KPI data
-  const kpiData: KPIData = useMemo(() => {
-    const data: KPIData = {
-      jamiByudjet: entries.reduce((sum, e) => sum + e.byudjet, 0),
-      sifatliLead: entries.reduce((sum, e) => sum + e.sifatliLead, 0),
-      jamiLead: entries.reduce((sum, e) => sum + e.jamiLead, 0),
-      jamiSotuv: entries.reduce((sum, e) => sum + e.sotuv, 0),
-      ortachaLeadNarxi: 0,
-      ortachaSotuvNarxi: 0,
-      rejaBarjarilishi: 0,
-      jamiRejaLid: entries.reduce((sum, e) => sum + e.rejaLid, 0)
-    }
-    
-    data.ortachaLeadNarxi = data.jamiLead > 0 ? data.jamiByudjet / data.jamiLead : 0
-    data.ortachaSotuvNarxi = data.jamiSotuv > 0 ? data.jamiByudjet / data.jamiSotuv : 0
-    data.rejaBarjarilishi = data.jamiRejaLid > 0 ? (data.sifatliLead / data.jamiRejaLid) * 100 : 0
-    
-    return data
-  }, [entries])
-  
-  // Export to Excel
-  const handleExport = useCallback(() => {
-    const exportData = entries.map(e => ({
-      "Kun": e.day,
-      "Byudjet ($)": e.byudjet,
-      "Sifatli Lead": e.sifatliLead,
-      "Jami Lead": e.jamiLead,
-      "Sotuv": e.sotuv,
-      "Sifatsiz": e.sifatsiz,
-      "Reja Lid": e.rejaLid,
-      "Lead Narxi ($)": e.jamiLead > 0 ? Math.round(e.byudjet / e.jamiLead) : 0,
-      "Sotuv Narxi ($)": e.sotuv > 0 ? Math.round(e.byudjet / e.sotuv) : 0,
-      "Sifat %": `${e.sifatPercent.toFixed(1)}%`,
-      "Konversiya %": `${e.konversiyaPercent.toFixed(1)}%`,
-      "Reja %": `${e.rejaPercent.toFixed(1)}%`
-    }))
-    
-    // Add totals row
-    const totals = {
-      "Kun": "JAMI",
-      "Byudjet ($)": kpiData.jamiByudjet,
-      "Sifatli Lead": kpiData.sifatliLead,
-      "Jami Lead": kpiData.jamiLead,
-      "Sotuv": kpiData.jamiSotuv,
-      "Sifatsiz": kpiData.jamiLead - kpiData.sifatliLead,
-      "Reja Lid": kpiData.jamiRejaLid,
-      "Lead Narxi ($)": kpiData.jamiLead > 0 ? Math.round(kpiData.jamiByudjet / kpiData.jamiLead) : 0,
-      "Sotuv Narxi ($)": kpiData.jamiSotuv > 0 ? Math.round(kpiData.jamiByudjet / kpiData.jamiSotuv) : 0,
-      "Sifat %": kpiData.jamiLead > 0 ? `${((kpiData.sifatliLead / kpiData.jamiLead) * 100).toFixed(1)}%` : "0%",
-      "Konversiya %": kpiData.sifatliLead > 0 ? `${((kpiData.jamiSotuv / kpiData.sifatliLead) * 100).toFixed(1)}%` : "0%",
-      "Reja %": `${kpiData.rejaBarjarilishi.toFixed(1)}%`
-    }
-    
-    exportData.push(totals)
-    
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "RNP Data")
-    
-    const fromStr = `${dateRange.from.getDate()}-${MONTHS_UZ[dateRange.from.getMonth()]}`
-    const toStr = `${dateRange.to.getDate()}-${MONTHS_UZ[dateRange.to.getMonth()]}-${dateRange.to.getFullYear()}`
-    const fileName = `RNP_${fromStr}_to_${toStr}.xlsx`
-    XLSX.writeFile(wb, fileName)
-  }, [entries, kpiData, dateRange])
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        onLogout={onLogout}
-        onExport={handleExport}
-        onOpenPlanSettings={() => setPlanModalOpen(true)}
-      />
-      
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <KPICards data={kpiData} />
-        
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Kunlik Ma&apos;lumotlar</h2>
-          <DataTable entries={entries} onUpdateEntry={handleUpdateEntry} />
-        </div>
-        
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Grafiklar</h2>
-          <DashboardCharts entries={entries} />
-        </div>
-      </main>
-      
-      <PlanSettingsModal
-        open={planModalOpen}
-        onClose={() => setPlanModalOpen(false)}
-        currentDate={currentEditMonth}
-        plans={currentPlans}
-        onSave={handleSavePlans}
-      />
-    </div>
-  )
-}
+    const
